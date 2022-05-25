@@ -77,6 +77,7 @@ def calc_ve():
 	placebo_total, vax_total = 0, 0
 
 	for datum in load_data(filters):
+		if datum.subj_id in group: continue
 		group.add(datum.subj_id)
 		if datum.arm == "Placebo":
 			placebo_total += 1
