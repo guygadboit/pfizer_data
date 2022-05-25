@@ -5,7 +5,7 @@ from collections import namedtuple
 from math import *
 from pdb import set_trace as brk
 
-Datum = namedtuple("Datum", "subj_id arm when what result")
+Datum = namedtuple("Datum", "row_num subj_id arm when what result")
 
 def convert_col(col):
 	"convert a column index like AM back to decimal"
@@ -20,7 +20,7 @@ def convert_col(col):
 
 	return ret
 
-def parse_row(row):
+def parse_row(row, num):
 	cols = (
 		('D', 'subj_id'),
 		('F', 'arm'),
@@ -28,7 +28,7 @@ def parse_row(row):
 		('S', 'what'),
 		('W', 'result'),
 		)
-	fields = {}
+	fields = {"row_num": num}
 	for index, field in cols:
 		fields[field] = row[convert_col(index)]
 	return Datum(**fields)
@@ -37,8 +37,8 @@ def load_data(filters):
 	"Generate datums from the rows that match all the filters"
 	with gzip.open("adva.csv.gz", "rt") as fp:
 		r = csv.reader(fp)
-		for row in r:
-			datum = parse_row(row)
+		for i, row in enumerate(r):
+			datum = parse_row(row, i+1)
 
 			for attr, val in filters.items():
 				if getattr(datum, attr) != val:
