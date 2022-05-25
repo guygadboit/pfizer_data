@@ -5,7 +5,7 @@ from collections import namedtuple
 from math import *
 from pdb import set_trace as brk
 
-Datum = namedtuple("Datum", "row_num subj_id arm when what result")
+Datum = namedtuple("Datum", "row_num subj_id arm when what result phase")
 
 def convert_col(col):
 	"convert a column index like AM back to decimal"
@@ -27,6 +27,7 @@ def parse_row(row, num):
 		('O', 'when'),
 		('S', 'what'),
 		('W', 'result'),
+		('DE', 'phase'),
 		)
 	fields = {"row_num": num}
 	for index, field in cols:
@@ -68,7 +69,8 @@ def calc_ve():
 	filters = {
 			"what": "N-binding antibody - N-binding Antibody Assay",
 			"when": "V1_DAY1_VAX1_L",
-			"result": "NEG"
+			"result": "NEG",
+			"phase": "Phase 3",
 			}
 
 	# Find the people who were negative to start with, and the totals in each
