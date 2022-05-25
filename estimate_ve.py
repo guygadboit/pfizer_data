@@ -35,7 +35,7 @@ def parse_row(row):
 
 def load_data(filters):
 	"Generate datums from the rows that match all the filters"
-	with gzip.open("adva.csv.gz") as fp:
+	with gzip.open("adva.csv.gz", "rt") as fp:
 		r = csv.reader(fp)
 		for row in r:
 			datum = parse_row(row)
