@@ -101,6 +101,10 @@ def calc_ve():
 		else:
 			vax += 1
 
+	print("{} / {} in vax arm went from NEG to POS".format(vax, vax_total))
+	print("{} / {} in placebo arm went from NEG to POS".format(placebo,
+		placebo_total))
+
 	print("({} / {}) / ({} / {})".format(vax,
 		vax_total, placebo, placebo_total))
 
