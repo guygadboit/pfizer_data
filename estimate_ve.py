@@ -84,7 +84,6 @@ def calc_ve(date=None):
 			"what": "N-binding antibody - N-binding Antibody Assay",
 			"when": "V1_DAY1_VAX1_L",
 			"result": "NEG",
-			"phase": "Phase 3",
 			}
 
 	# Find the people who were negative to start with, and the totals in each
@@ -103,37 +102,42 @@ def calc_ve(date=None):
 	for datum in load_data(filters, date):
 
 		if datum.subj_id in placebo_arm:
-			if datum.arm != "Placebo":
-				print("{} switched out of Placebo arm".format(datum.subj_id))
-				placebo_arm.remove(datum.subj_id)
-			else:
-				placebo += 1
+			placebo += 1
 
 		elif datum.subj_id in vax_arm:
-			if datum.arm == "Placebo":
-				print("{} switched INTO Placebo arm!".format(datum.subj_id))
-				vax_arm.remove(datum.subj_id)
-			else:
-				vax += 1
+			vax += 1
+
+	# And how many were still negative (don't just assume anyone we don't have
+	# a result for at the second visit was negative)
+	placebo_neg, vax_neg = 0, 0
+	filters.update({"when": "V3_MONTH1_POSTVAX2_L", "result": "NEG"})
+	for datum in load_data(filters, date):
+
+		if datum.subj_id in placebo_arm:
+			placebo_neg += 1
+
+		elif datum.subj_id in vax_arm:
+			vax_neg += 1
 
 	if date:
-		print("Considering only rows before {}".format(date))
+		print("Considering only rows before {}".format(
+			date.strftime("%Y-%m-%d")))
 
-	vax_total = len(vax_arm)
-	placebo_total = len(placebo_arm)
+	vax_total = vax + vax_neg
+	placebo_total = placebo + placebo_neg
 
-	print("{} / {} in vax arm went from NEG to POS".format(vax, vax_total))
-	print("{} / {} in placebo arm went from NEG to POS".format(placebo,
-		placebo_total))
+	print("Vax arm: {} went NEG->POS. {} stayed NEG.".format(vax, vax_neg))
+	print("Placebo arm: {} went NEG->POS. {} stayed NEG.".format(placebo,
+		placebo_neg))
 
 	print("({} / {}) / ({} / {})".format(vax,
 		vax_total, placebo, placebo_total))
 
-	results = ci(vax, vax_total - vax, placebo, placebo_total - placebo)
+	results = ci(vax, vax_neg, placebo, placebo_neg)
 	print([to_ve(r) for r in results])
 
 def main():
-# 	calc_ve()
+	calc_ve()
 	calc_ve(datetime(2020, 11, 15))
 
 if __name__ == "__main__":

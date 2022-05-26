@@ -8,3 +8,23 @@ https://t.co/MeMo7F0KUV
 
 There was a link to Jikky's R file in there somewhere too which I can't now
 find. But I have included the file.
+
+These are the results:
+
+131 / 22393 in vax arm went from NEG to POS
+353 / 22333 in placebo arm went from NEG to POS
+(131 / 22393) / (353 / 22333)
+[69.68763000581791, 62.98895256244712, 54.809946147803636]
+
+And this if we only consider rows before 2020-11-15:
+
+Vax arm: 131 went NEG->POS. 20863 stayed NEG.
+Placebo arm: 353 went NEG->POS. 20381 stayed NEG.
+(131 / 20994) / (353 / 20734)
+[69.98074750262458, 63.349112831644064, 55.25246571862502]
+
+Considering only rows before 2020-11-15
+Vax arm: 75 went NEG->POS. 15919 stayed NEG.
+Placebo arm: 160 went NEG->POS. 15708 stayed NEG.
+(75 / 15994) / (160 / 15868)
+[64.61908262859943, 53.494279104664244, 38.87150937066692]
