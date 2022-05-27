@@ -3,6 +3,7 @@ import gzip
 from collections import namedtuple
 from math import *
 from datetime import *
+from copy import *
 from pdb import set_trace as brk
 
 # Datum = namedtuple("Datum", "row_num subj_id arm when what result phase date")
@@ -15,13 +16,19 @@ class Datum:
 			"what",
 			"phase",
 			"date",
-			"result")
+			"results")
 
 	def __init__(self, *args, **kwargs):
 		for attr, arg in zip(self.ATTRS, args):
 			setattr(self, attr, arg)
 
 		self.__dict__.update(kwargs)
+
+	def merge(self, new):
+		for attr in self.ATTRS[:-1]:
+			setattr(self, attr, getattr(new, attr))
+		self.results.append(new.results[-1])
+
 
 def convert_col(col):
 	"convert a column index like AM back to decimal"
@@ -50,7 +57,7 @@ def parse_row(row, num):
 		('S', 'what', None),
 		('DE', 'phase', None),
 		('J', 'date', convert_date),
-		('W', 'result', None),
+		('W', 'results', lambda s: [s]),
 		)
 
 	fields = {"row_num": num}
@@ -62,9 +69,17 @@ def parse_row(row, num):
 
 	return Datum(**fields)
 
-def load_data(filename, filters, date=None):
+def load_data(filename, existing=None, filters=None, date=None):
 	"""Generate datums from the rows that match all the filters where date is <
-	date"""
+	date. If existing then it's a dictionary of datums keyed on subj_id which
+	will be updated and have the result appended"""
+	existing = existing or {}
+	filters = copy(filters or {})
+
+	result_filter = filters.pop("result")
+	if result_filter:
+		filters["results"] = [result_filter]
+
 	with gzip.open(filename, "rt") as fp:
 		r = csv.reader(fp)
 		for i, row in enumerate(r):
@@ -77,7 +92,15 @@ def load_data(filename, filters, date=None):
 				if getattr(datum, attr) != val:
 					break
 			else:
+				previous = existing.get(datum.subj_id)
+				if previous:
+					previous.merge(datum)
+					datum = previous
 				yield datum
+
+def update_data(*args, **kwargs):
+	for _ in load_data(*args, **kwargs):
+		pass
 
 def ci(a, b, c, d):
 	"""a, b: events and non-events in one arm, c,d: the same in the other arm.

@@ -9,38 +9,33 @@ def calc_ve(date=None):
 			"result": "NEG",
 			}
 
-	# Find the people who were negative to start with, and the totals in each
-	# arm
-	placebo_arm, vax_arm = set(), set()
+	# Load everyone who was neg to start with
+	data = {}
+	for datum in load_data("adva.csv.gz", None, filters, date):
+		data[datum.subj_id] = datum
 
-	for datum in load_data("adva.csv.gz", filters, date):
-		if datum.arm == "Placebo":
-			placebo_arm.add(datum.subj_id)
-		else:
-			vax_arm.add(datum.subj_id)
-
-	# Now see how many in each arm became positive afterwards
-	placebo, vax = 0, 0
-	filters.update({"when": "V3_MONTH1_POSTVAX2_L", "result": "POS"})
-	for datum in load_data("adva.csv.gz", filters, date):
-
-		if datum.subj_id in placebo_arm:
-			placebo += 1
-
-		elif datum.subj_id in vax_arm:
-			vax += 1
-
-	# And how many were still negative (don't just assume anyone we don't have
-	# a result for at the second visit was negative)
-	placebo_neg, vax_neg = 0, 0
+	# Now update with everyone who was still negative at the end
 	filters.update({"when": "V3_MONTH1_POSTVAX2_L", "result": "NEG"})
-	for datum in load_data("adva.csv.gz", filters, date):
+	update_data("adva.csv.gz", data, filters, date)
 
-		if datum.subj_id in placebo_arm:
-			placebo_neg += 1
+	# Update again with everyone who was positive at the end
+	filters.update({"when": "V3_MONTH1_POSTVAX2_L", "result": "POS"})
+	update_data("adva.csv.gz", data, filters, date)
 
-		elif datum.subj_id in vax_arm:
-			vax_neg += 1
+	# Now count NEG->NEG and NEG->POS in each arm
+	placebo_neg, placebo = 0, 0
+	vax_neg, vax = 0, 0
+
+	for datum in data.values():
+		non_event = datum.results == ["NEG", "NEG"]
+		event = datum.results == ["NEG", "POS"]
+
+		if datum.arm == "Placebo":
+			placebo_neg += int(non_event)
+			placebo += int(event)
+		else:
+			vax_neg += int(non_event)
+			vax += int(event)
 
 	if date:
 		print("Considering only rows before {}".format(
