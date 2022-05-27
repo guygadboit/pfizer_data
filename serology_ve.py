@@ -2,13 +2,14 @@
 from pdb import set_trace as brk
 from common import *
 
+# For each test the cutoff for the Placebo arm and for the Vax arm
 QUANTITATIVE_TESTS = (
-	"COVID-19 RBD IgG (U/mL) - Luminex Immunoassay",
-	"COVID-19 S1 IgG (U/mL) - Luminex Immunoassay",
-	"SARS-CoV-2 serum neutralizing titer 50 (titer) - Virus Neutralization Assay",
-	"SARS-CoV-2 serum neutralizing titer 50 to COVID-19 S1 IgG",
-	"SARS-CoV-2 serum neutralizing titer 90 (titer) - Virus Neutralization Assay",
-	"SARS-CoV-2 serum neutralizing titer 90 to COVID-19 S1 IgG",
+	("SARS-CoV-2 serum neutralizing titer 50 (titer) - "
+		"Virus Neutralization Assay", 20, 10000),
+	("SARS-CoV-2 serum neutralizing titer 90 (titer) - "
+		"Virus Neutralization Assay", 20, 3000),
+# 	"SARS-CoV-2 serum neutralizing titer 90 to COVID-19 S1 IgG",
+# 	("SARS-CoV-2 serum neutralizing titer 50 to COVID-19 S1 IgG", 10, 10),
 )
 
 class VECalculator:
@@ -33,6 +34,14 @@ class VECalculator:
 
 	def load_after(self):
 		raise NotImplementedError
+
+	def _count_event(self, datum, event):
+		if datum.arm == "Placebo":
+			self.placebo_neg += int(not event)
+			self.placebo += int(event)
+		else:
+			self.vax_neg += int(not event)
+			self.vax += int(event)
 
 	def count(self):
 		raise NotImplementedError
@@ -66,8 +75,15 @@ class VECalculator:
 		print("({} / {}) / ({} / {})".format(vax,
 			vax_total, placebo, placebo_total))
 
-		results = ci(vax, vax_neg, placebo, placebo_neg)
-		print([to_ve(r) for r in results])
+		if vax_total == 0 or placebo_total == 0:
+			print("Insufficient data")
+			return
+
+		try:
+			results = ci(vax, vax_neg, placebo, placebo_neg)
+			print([to_ve(r) for r in results])
+		except ValueError:
+			print("Bad data")
 
 class NVECalculator(VECalculator):
 	def __init__(self, filename, date):
@@ -80,7 +96,7 @@ class NVECalculator(VECalculator):
 
 		# Load everyone who was neg to start with
 		data = {}
-		for datum in load_data("adva.csv.gz", None, filters, self.date):
+		for datum in load_data(self.filename, None, filters, self.date):
 			data[datum.subj_id] = datum
 
 		self.data = data
@@ -96,27 +112,54 @@ class NVECalculator(VECalculator):
 		update_data(self.filename, self.data, filters, self.date)
 
 	def count(self):
-		# Don't count twice
-
 		for datum in self.data.values():
-			non_event = datum.results == ["NEG", "NEG"]
-			event = datum.results == ["NEG", "POS"]
+			self._count_event(datum, datum.results == ["NEG", "POS"])
 
-			if datum.arm == "Placebo":
-				self.placebo_neg += int(non_event)
-				self.placebo += int(event)
-			else:
-				self.vax_neg += int(non_event)
-				self.vax += int(event)
+class QuantVECalculator(VECalculator):
+	"Estimate VE using one of the quantitative tests"
+	def __init__(self, filename, what, placebo_cutoff, vax_cutoff, date):
+		self.placebo_cutoff = placebo_cutoff
+		self.vax_cutoff = vax_cutoff
+		super(QuantVECalculator, self).__init__(filename, what, date)
+
+	def load_before(self):
+		filters = self._filters(True)
+
+		# Just load everyone's result on the start date
+		data = {}
+		for datum in load_data(self.filename, None, filters, self.date):
+			data[datum.subj_id] = datum
+
+		self.data = data
+
+	def load_after(self):
+		filters = self._filters(False)
+		update_data(self.filename, self.data, filters, self.date)
+
+	def count(self):
+		for datum in self.data.values():
+			results = datum.results
+			if len(results) != 2: continue
+
+			cutoff = (self.placebo_cutoff if datum.arm == "Placebo" else
+					self.vax_cutoff)
+
+			before, after = [float(r) for r in results]
+			event = before <= cutoff and after > cutoff
+			self._count_event(datum, event)
 
 def calc_ve(date=None):
 	calc = NVECalculator("adva.csv.gz", date)
 	calc.calculate()
 	calc.summarize()
 
+	calc = QuantVECalculator("adva.csv.gz", *QUANTITATIVE_TESTS[0], date)
+	calc.calculate()
+	calc.summarize()
+
 def main():
-	calc_ve()
 	calc_ve(datetime(2020, 11, 15))
+	calc_ve()
 
 if __name__ == "__main__":
 	main()

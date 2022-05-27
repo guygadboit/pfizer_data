@@ -76,7 +76,7 @@ def load_data(filename, existing=None, filters=None, date=None):
 	existing = existing or {}
 	filters = copy(filters or {})
 
-	result_filter = filters.pop("result")
+	result_filter = filters.pop("result", None)
 	if result_filter:
 		filters["results"] = [result_filter]
 
