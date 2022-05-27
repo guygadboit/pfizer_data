@@ -3,8 +3,25 @@ import gzip
 from collections import namedtuple
 from math import *
 from datetime import *
+from pdb import set_trace as brk
 
-Datum = namedtuple("Datum", "row_num subj_id arm when what result phase date")
+# Datum = namedtuple("Datum", "row_num subj_id arm when what result phase date")
+
+class Datum:
+	ATTRS = ("row_num",
+			"subj_id",
+			"arm",
+			"when",
+			"what",
+			"phase",
+			"date",
+			"result")
+
+	def __init__(self, *args, **kwargs):
+		for attr, arg in zip(self.ATTRS, args):
+			setattr(self, attr, arg)
+
+		self.__dict__.update(kwargs)
 
 def convert_col(col):
 	"convert a column index like AM back to decimal"
@@ -31,15 +48,18 @@ def parse_row(row, num):
 		('H', 'arm', None),
 		('O', 'when', None),
 		('S', 'what', None),
-		('W', 'result', None),
 		('DE', 'phase', None),
 		('J', 'date', convert_date),
+		('W', 'result', None),
 		)
+
 	fields = {"row_num": num}
+
 	for index, field, convert in cols:
 		d = row[convert_col(index)]
 		if convert: d = convert(d)
 		fields[field] = d
+
 	return Datum(**fields)
 
 def load_data(filename, filters, date=None):
